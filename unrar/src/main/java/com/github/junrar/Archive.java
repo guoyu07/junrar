@@ -23,8 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -461,28 +461,21 @@ public class Archive implements Closeable {
 	 * @throws IOException
 	 *             if any IO error occur
 	 */
-	public InputStream getInputStream(final FileHeader hd) throws RarException,
-			IOException {
-		final PipedInputStream in = new PipedInputStream(32 * 1024);
-		final PipedOutputStream out = new PipedOutputStream(in);
+	public InputStream getInputStream(final FileHeader hd) throws IOException {
+		final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-		// creates a new thread that will write data to the pipe. Data will be
-		// available in another InputStream, connected to the OutputStream.
-		new Thread(new Runnable() {
-			public void run() {
-				try {
-					extractFile(hd, out);
-				} catch (RarException e) {
-				} finally {
-					try {
-						out.close();
-					} catch (IOException e) {
-					}
-				}
+		try {
+			extractFile(hd, out);
+		} catch (RarException e) {
+			throw new IOException("RAR extracting issue", e);
+		} finally {
+			try {
+				out.close();
+			} catch (IOException e) {
 			}
-		}).start();
+		}
 
-		return in;
+		return new ByteArrayInputStream(out.toByteArray());
 	}
 
 	private void doExtractFile(FileHeader hd, OutputStream os)
